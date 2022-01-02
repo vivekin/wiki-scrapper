@@ -50,6 +50,16 @@ class WikiScrapper:
         except Exception as e:
             raise Exception(f"(findElementByTag) - ClassPath provided was not found.\n" + str(e))
 
+    def findElementById(self, id_name):
+        """
+        This function finds web element using id provided
+        """
+        try:
+            element = self.driver.find_elements(By.ID, id_name)
+
+            return element
+        except Exception as e:
+            raise Exception(f"(findElementByid) - id provided was not found.\n" + str(e))
 
     def getLocatorsObject(self):
         """
@@ -103,6 +113,18 @@ class WikiScrapper:
             # self.driver.refresh()
             raise Exception(f"(searchArticle) - Something went wrong on searching.\n" + str(e))
 
+    def checkdisambiguation(self):
+        """
+                This function checks if it is disambiguation page.
+                """
+        try:
+            if self.findElementById("disambigbox"):
+                return True
+            else:
+                return False
+        except Exception as e:
+            raise Exception(f"(disambiguation) - Not able to check if disambiguation page.\n" + str(e))
+
     def getSummary(self):
         """
                 This function makes the summary.
@@ -128,8 +150,9 @@ class WikiScrapper:
             body=self.findElementByClass("mw-parser-output")
 
             print("making refs")
+            refsection=body.find_element(By.CLASS_NAME, value="reflist")
 
-            refs = body.find_elements(By.TAG_NAME, "a")
+            refs = refsection.find_elements(By.TAG_NAME, "a")
             #refs = self.findElementByTag("a")
             print("list href")
             li=[]
@@ -169,34 +192,32 @@ class WikiScrapper:
     def getInfo(self,searchString):
         try:
             print("inside getinfo")
-            summary=self.getSummary()
-            refs=self.getReferences()
-            images=self.getImages()
-            mongoClient = MongoDBManagement(username='mongouser', password='mongouser')
-            headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36'}
-            print("downloading images")
-            imglist={}
-            for i in images:
-                if not "data:image" in i:
-                    a = requests.get(i, headers=headers)
-                    n = i.split('/')[-1].replace("%","p")
-                    if "." in n:
-                        imglist[n] = {"type": "image", "name": n, "img": a.content}
+            check = self.checkdisambiguation()
+            if check:
+                return "disambiguation"
+            else:
+                summary=self.getSummary()
+                refs=self.getReferences()
+                images=self.getImages()
+                mongoClient = MongoDBManagement(username='mongouser', password='mongouser')
+                headers = {'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/96.0.4664.110 Safari/537.36'}
+                print("downloading images")
+                imglist={}
+                for i in images:
+                    if not "data:image" in i:
+                        a = requests.get(i, headers=headers)
+                        n = i.split('/')[-1].replace("%","p")
+                        if "." in n:
+                            imglist[n] = {"type": "image", "name": n, "img": a.content}
 
 
-            result={"type":"textinfo","summary":summary,"refs":refs}
-            print("making db entry")
-            mongoClient.insertRecord(db_name="Wiki-Scrapper",collection_name=searchString,record=result)
-            mongoClient.insertRecords(db_name="Wiki-Scrapper", collection_name=searchString,records=imglist)
-            print("done db entry")
-            mongoClient.closeMongoDBconnection()
-            return searchString
+                result={"type":"textinfo","summary":summary,"refs":refs}
+                print("making db entry")
+                mongoClient.insertRecord(db_name="Wiki-Scrapper",collection_name=searchString,record=result)
+                mongoClient.insertRecords(db_name="Wiki-Scrapper", collection_name=searchString,records=imglist)
+                print("done db entry")
+                mongoClient.closeMongoDBconnection()
+                return searchString
 
         except Exception as e:
             raise Exception(f"(getinfo) - Not able to scrape from wiki page.\n" + str(e))
-
-
-
-
-
-
