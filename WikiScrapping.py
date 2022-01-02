@@ -150,15 +150,18 @@ class WikiScrapper:
             body=self.findElementByClass("mw-parser-output")
 
             print("making refs")
-            refsection=body.find_element(By.CLASS_NAME, value="reflist")
+            refsections=body.find_elements(By.CLASS_NAME, value="reflist")
 
-            refs = refsection.find_elements(By.TAG_NAME, "a")
-            #refs = self.findElementByTag("a")
-            print("list href")
-            li=[]
-            for i in refs:
-                r=i.get_attribute("href")
-                li.append(r)
+            li = []
+            for refsection in refsections:
+                refs = refsection.find_elements(By.TAG_NAME, "a")
+                #refs = self.findElementByTag("a")
+                print("list href")
+                for i in refs:
+                    r=i.get_attribute("href")
+                    li.append(r)
+
+
             print("list append start")
 
 
@@ -194,6 +197,8 @@ class WikiScrapper:
             print("inside getinfo")
             check = self.checkdisambiguation()
             if check:
+                #dd = {"type": "textinfo","summary": "Entered disambiguation page, Please try again with a specific search term.","refs": []}
+                #mongoClient.insertRecord(db_name="Wiki-Scrapper", collection_name="disambiguation", record=dd)
                 return "disambiguation"
             else:
                 summary=self.getSummary()
